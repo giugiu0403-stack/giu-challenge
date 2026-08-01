@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Giu Challenge">
+<title>The Giu Challenge</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { background: #060A10; color: #E2E8F0; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; min-height: 100vh; }
+  ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #0D1117; } ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const STORAGE_KEY = "giu-challenge-v1";
+
+const DAILY_CONSTANTS = [
+  "Wake at 6:00 AM — no snooze, ever",
+  "Cold shower (2 min minimum)",
+  "No phone for first 45 minutes",
+  "Real breakfast before 8 AM",
+  "Morning journal: 3 sentences (goals / how I'll show up / what won't derail me)",
+  "Write one thing you're grateful for",
+  "Mirror practice: 5 min talking out loud",
+  "No gooning",
+  "No social media before noon",
+  "Compliment one person genuinely — no agenda",
+  "One real phone call instead of texting",
+  "10 min walk after dinner",
+  "Track water — 3L minimum",
+  "1 intentional social discomfort rep",
+  "Evening check-in: yes/no on every commitment",
+  "In bed by 11 PM",
+];
+
+const GYM_SPLIT = {
+  1: "🏋️ Push — Chest, Shoulders, Triceps",
+  2: "🏋️ Pull — Back, Biceps",
+  3: "🏋️ Legs — Quads, Hamstrings, Glutes, Calves",
+  4: "🏋️ Upper — Compound Chest + Back + Shoulders",
+  5: "🏋️ Arms/Abs — Biceps, Triceps, Core",
+};
+
+function getGymSession(day) {
+  const dow = (day + 5) % 7;
+  return GYM_SPLIT[dow] || null;
+}
+
+const WEEK_CONFIG = [
+  { label: "WEEK 1", theme: "BUILD THE FLOOR", color: "#3B82F6", days: [1,2,3,4,5,6,7] },
+  { label: "WEEK 2", theme: "ADD PRESSURE", color: "#8B5CF6", days: [8,9,10,11,12,13,14] },
+  { label: "WEEK 3", theme: "TEST YOURSELF", color: "#EF4444", days: [15,16,17,18,19,20,21] },
+  { label: "WEEK 4", theme: "CONSOLIDATE", color: "#F59E0B", days: [22,23,24,25,26,27,28] },
+  { label: "BONUS", theme: "OVERFLOW", color: "#10B981", days: [29,30,31] },
+];
+
+const WEEK_TASKS = {
+  0: ["30 door conversations (not just knocks)", "Read 15 pages", "5 min morning stillness", "Build/update client list"],
+  1: ["40 door conversations", "Read 15 pages", "5 min morning stillness", "Cold approach 1 stranger", "Follow up on previous week's no's"],
+  2: ["50 door conversations", "Read 20 pages", "10 min morning stillness", "Cold approach 2 strangers", "Follow up on previous week's no's"],
+  3: ["50 door conversations", "Read 20 pages", "10 min morning stillness", "Cold approach 3 strangers", "Follow up on all no's from the month"],
+  4: [],
+};
+
+const SPECIALS = {
+  1:  ["🧗 Rock climbing — intro session", "Set up Google Business Profile", "📝 Weekly philosophy question — write one full page"],
+  2:  ["📅 30 min route planning — map neighborhoods for the week"],
+  3:  ["Post Instagram: introduce Wish n' Wash", "✏️ Jouer — one sketch or concept note"],
+  5:  ["Text existing customers for Google reviews"],
+  7:  ["Week 1 review — did I hit quota every day?"],
+  8:  ["🧗 Rock climbing session 2", "📝 Weekly philosophy question — write one full page"],
+  9:  ["📅 30 min route planning"],
+  11: ["Reach out to 5 local businesses for contracts", "✏️ Jouer — one sketch or concept note"],
+  12: ["Record yourself pitching on camera — watch it back honestly"],
+  13: ["Post Instagram"],
+  14: ["🧗 Rock climbing session 3", "Week 2 review — what shifted?"],
+  15: ["🧗 Rock climbing session 4", "📝 Weekly philosophy question — write one full page"],
+  16: ["📅 30 min route planning", "Initiate a real social event — you organize it"],
+  17: ["Pitch monthly maintenance plan to every existing customer", "✏️ Jouer — one sketch or concept note"],
+  19: ["Post Instagram"],
+  21: ["🧗 Rock climbing session 5", "Week 3 review — what are you still avoiding?"],
+  22: ["🧗 Rock climbing session 6", "📝 Weekly philosophy question — write one full page"],
+  23: ["📅 30 min route planning"],
+  24: ["Revenue + pipeline review — write the numbers down", "✏️ Jouer — one sketch or concept note"],
+  26: ["Post Instagram"],
+  27: ["Write your 3 honest assessment answers:\n1. Where am I vs a month ago?\n2. What's actually working?\n3. What am I still avoiding?"],
+  28: ["🧗 Rock climbing session 7", "Set Month 2 revenue target"],
+  29: ["REST DAY — morning routine only", "20 min extended stillness", "Zero doors, zero pressure", "📝 Final philosophy entry — what did this month teach you?"],
+  30: ["📅 Map out Month 2 protocol in writing", "No doors today"],
+  31: ["🔥 MONTH 2 LAUNCH — hit 60 doors today", "New monthly targets locked in", "Start again, harder"],
+};
+
+function getWeekIndex(day) { return WEEK_CONFIG.findIndex(w => w.days.includes(day)); }
+function getWeekConfig(day) { return WEEK_CONFIG[getWeekIndex(day)] || WEEK_CONFIG[0]; }
+function getDayTasks(day) {
+  const wi = getWeekIndex(day);
+  const gym = getGymSession(day);
+  const weekly = [...(WEEK_TASKS[wi] || [])];
+  if (gym) weekly.unshift(gym);
+  return { weekly, special: SPECIALS[day] || [] };
+}
+
+const DAY_LABELS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const DOW_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+function App() {
+  const [selectedDay, setSelectedDay] = React.useState(1);
+  const [checked, setChecked] = React.useState({});
+  const [saveStatus, setSaveStatus] = React.useState("idle");
+  const [view, setView] = React.useState("calendar"); // calendar | day
+
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) setChecked(JSON.parse(saved));
+    } catch(e) {}
+  }, []);
+
+  const save = (data) => {
+    setSaveStatus("saving");
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 1500);
+    } catch(e) { setSaveStatus("error"); setTimeout(() => setSaveStatus("idle"), 2000); }
+  };
+
+  const toggle = (day, type, i) => {
+    const k = `${day}-${type}-${i}`;
+    setChecked(prev => {
+      const next = { ...prev, [k]: !prev[k] };
+      save(next);
+      return next;
+    });
+  };
+
+  const isChecked = (day, type, i) => !!checked[`${day}-${type}-${i}`];
+
+  const getDayProgress = (day) => {
+    const { weekly, special } = getDayTasks(day);
+    const total = DAILY_CONSTANTS.length + weekly.length + special.length;
+    if (!total) return 0;
+    let done = 0;
+    DAILY_CONSTANTS.forEach((_, i) => { if (isChecked(day,'c',i)) done++; });
+    weekly.forEach((_, i) => { if (isChecked(day,'w',i)) done++; });
+    special.forEach((_, i) => { if (isChecked(day,'s',i)) done++; });
+    return Math.round((done / total) * 100);
+  };
+
+  const { totalProgress, completedDays } = React.useMemo(() => {
+    let total = 0, done = 0, completedDays = 0;
+    for (let d = 1; d <= 31; d++) {
+      const { weekly, special } = getDayTasks(d);
+      const t = DAILY_CONSTANTS.length + weekly.length + special.length;
+      let dd = 0; total += t;
+      DAILY_CONSTANTS.forEach((_, i) => { if (checked[`${d}-c-${i}`]) { done++; dd++; } });
+      weekly.forEach((_, i) => { if (checked[`${d}-w-${i}`]) { done++; dd++; } });
+      special.forEach((_, i) => { if (checked[`${d}-s-${i}`]) { done++; dd++; } });
+      if (t > 0 && dd === t) completedDays++;
+    }
+    return { totalProgress: total ? Math.round((done/total)*100) : 0, completedDays };
+  }, [checked]);
+
+  const selWC = getWeekConfig(selectedDay);
+  const { weekly, special } = getDayTasks(selectedDay);
+  const dayProg = getDayProgress(selectedDay);
+  const gymToday = getGymSession(selectedDay);
+  const dow = (selectedDay + 5) % 7;
+
+  const cells = [];
+  for (let i = 0; i < 6; i++) cells.push(null);
+  for (let d = 1; d <= 31; d++) cells.push(d);
+
+  const CB = ({ day, type, index, label, accent }) => {
+    const done = isChecked(day, type, index);
+    return (
+      <div onClick={() => toggle(day, type, index)} style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:12, cursor:"pointer", userSelect:"none", padding:"4px 0" }}>
+        <div style={{
+          width:22, height:22, borderRadius:5, flexShrink:0, marginTop:1,
+          border:`2px solid ${done ? accent : "#1E293B"}`,
+          background: done ? accent : "transparent",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          transition:"all 0.15s",
+        }}>
+          {done && <span style={{ fontSize:12, color:"#fff", fontWeight:900 }}>✓</span>}
+        </div>
+        <span style={{
+          fontSize:14, lineHeight:1.6,
+          color: done ? "#334155" : type==='s' ? "#E2E8F0" : "#7A9AB8",
+          fontWeight: type==='s' ? 600 : 400,
+          textDecoration: done ? "line-through" : "none",
+          whiteSpace:"pre-line",
+        }}>{label}</span>
+      </div>
+    );
+  };
+
+  const saveColor = saveStatus==="saved" ? "#10B981" : saveStatus==="saving" ? "#F59E0B" : "#EF4444";
+
+  return (
+    <div style={{ minHeight:"100vh", padding:"16px 12px 60px" }}>
+      <div style={{ maxWidth:480, margin:"0 auto" }}>
+
+        {/* Header */}
+        <div style={{ marginBottom:16, display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+          <div>
+            <div style={{ fontSize:9, letterSpacing:4, color:"#334155", textTransform:"uppercase", marginBottom:4 }}>August 2026 · 31-Day Protocol</div>
+            <div style={{ fontSize:26, fontWeight:900, letterSpacing:-0.5 }}>The Giu Challenge</div>
+            <div style={{ fontSize:10, color:"#475569", marginTop:2, letterSpacing:1.5 }}>CHARISMA · CONFIDENCE · CASH</div>
+          </div>
+          {saveStatus !== "idle" && (
+            <div style={{ fontSize:10, fontWeight:700, color:saveColor, marginTop:4 }}>
+              {saveStatus==="saved" ? "✓ saved" : saveStatus==="saving" ? "saving..." : "save failed"}
+            </div>
+          )}
+        </div>
+
+        {/* Stats */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+          <div style={{ background:"#0D1117", borderRadius:8, padding:"10px 14px" }}>
+            <div style={{ fontSize:8, letterSpacing:2, color:"#334155", fontWeight:700, marginBottom:4 }}>OVERALL</div>
+            <div style={{ fontSize:22, fontWeight:900, color:"#3B82F6" }}>{totalProgress}%</div>
+          </div>
+          <div style={{ background:"#0D1117", borderRadius:8, padding:"10px 14px" }}>
+            <div style={{ fontSize:8, letterSpacing:2, color:"#334155", fontWeight:700, marginBottom:4 }}>DAYS DONE</div>
+            <div style={{ fontSize:22, fontWeight:900, color:"#10B981" }}>{completedDays}/31</div>
+          </div>
+        </div>
+
+        <div style={{ background:"#1E293B", borderRadius:999, height:3, marginBottom:16, overflow:"hidden" }}>
+          <div style={{ height:"100%", width:`${totalProgress}%`, background:"linear-gradient(90deg,#3B82F6,#8B5CF6,#EF4444,#F59E0B)", borderRadius:999, transition:"width 0.4s" }} />
+        </div>
+
+        {/* Tab toggle */}
+        <div style={{ display:"flex", background:"#0D1117", borderRadius:8, padding:4, marginBottom:16, gap:4 }}>
+          {["calendar","day"].map(v => (
+            <button key={v} onClick={() => setView(v)} style={{
+              flex:1, padding:"8px 0", borderRadius:6, border:"none", cursor:"pointer",
+              background: view===v ? selWC.color : "transparent",
+              color: view===v ? "#fff" : "#475569",
+              fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:1,
+              transition:"all 0.15s",
+            }}>{v==="calendar" ? "📅 Calendar" : "✅ Today"}</button>
+          ))}
+        </div>
+
+        {view === "calendar" && (
+          <div>
+            {/* Legend */}
+            <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:12 }}>
+              {WEEK_CONFIG.map(w => (
+                <div key={w.label} style={{ display:"flex", alignItems:"center", gap:5 }}>
+                  <div style={{ width:7, height:7, borderRadius:2, background:w.color }} />
+                  <span style={{ fontSize:9, color:"#475569", fontWeight:700 }}>{w.label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Calendar grid */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2, marginBottom:4 }}>
+              {DAY_LABELS.map(d => <div key={d} style={{ textAlign:"center", fontSize:9, color:"#2D3F50", fontWeight:700, padding:"4px 0" }}>{d}</div>)}
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2, marginBottom:16 }}>
+              {cells.map((day, i) => {
+                if (!day) return <div key={`e${i}`} style={{ aspectRatio:"1" }} />;
+                const wc = getWeekConfig(day);
+                const prog = getDayProgress(day);
+                const sel = day === selectedDay;
+                const done = prog === 100;
+                return (
+                  <button key={day} onClick={() => { setSelectedDay(day); setView("day"); }} style={{
+                    aspectRatio:"1", border: sel ? `2px solid ${wc.color}` : "2px solid transparent",
+                    borderRadius:8, background: sel ? `${wc.color}1A` : done ? `${wc.color}10` : "#0D1117",
+                    cursor:"pointer", display:"flex", flexDirection:"column",
+                    alignItems:"center", justifyContent:"center", gap:2, transition:"all 0.12s",
+                  }}>
+                    <span style={{ fontSize:13, fontWeight: sel?900:600, color: sel?wc.color:done?wc.color:"#64748B" }}>{day}</span>
+                    {prog > 0 && prog < 100 && (
+                      <div style={{ width:"60%", height:2, background:"#1E293B", borderRadius:999 }}>
+                        <div style={{ width:`${prog}%`, height:"100%", background:wc.color, borderRadius:999 }} />
+                      </div>
+                    )}
+                    {done && <span style={{ fontSize:9, color:"#10B981", fontWeight:900 }}>✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Gym split */}
+            <div style={{ background:"#0D1117", borderRadius:10, padding:"14px 16px" }}>
+              <div style={{ fontSize:8, letterSpacing:2, color:"#334155", fontWeight:700, marginBottom:10 }}>5-DAY GYM SPLIT</div>
+              {[
+                { d:"Mon", label:"Push — Chest / Shoulders / Tris", dow:1 },
+                { d:"Tue", label:"Pull — Back / Biceps", dow:2 },
+                { d:"Wed", label:"Legs — Quads / Hams / Glutes", dow:3 },
+                { d:"Thu", label:"Upper — Compound Full Upper", dow:4 },
+                { d:"Fri", label:"Arms/Abs — Bis / Tris / Core", dow:5 },
+                { d:"Sat/Sun", label:"Rest / Active Recovery", dow:-1 },
+              ].map(r => {
+                const today = r.dow === dow || (r.dow===-1 && (dow===0||dow===6));
+                return (
+                  <div key={r.d} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                    <span style={{ fontSize:11, fontWeight:700, color: today ? selWC.color : "#2D3F50", minWidth:38 }}>{r.d}</span>
+                    <span style={{ fontSize:12, color: today ? "#CBD5E1" : "#475569" }}>{r.label}</span>
+                    {today && <span style={{ fontSize:9, color:selWC.color, fontWeight:800, marginLeft:"auto" }}>TODAY</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {view === "day" && (
+          <div style={{ background:"#0D1117", borderRadius:12, overflow:"hidden" }}>
+            {/* Day header */}
+            <div style={{ padding:"16px 18px", background:`${selWC.color}12`, borderBottom:`1px solid ${selWC.color}22` }}>
+              <div style={{ fontSize:8, letterSpacing:3, color:selWC.color, fontWeight:800, marginBottom:2 }}>{selWC.label} · {selWC.theme}</div>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end" }}>
+                <div>
+                  <div style={{ fontSize:24, fontWeight:900, letterSpacing:-0.5 }}>August {selectedDay}</div>
+                  <div style={{ fontSize:11, color:"#475569", marginTop:2 }}>
+                    {DOW_NAMES[dow]}{gymToday ? ` · ${gymToday.replace("🏋️ ","")}` : " · Rest from gym"}
+                  </div>
+                </div>
+                <div style={{ fontSize:28, fontWeight:900, color: dayProg===100 ? "#10B981" : selWC.color }}>{dayProg}%</div>
+              </div>
+              <div style={{ marginTop:10, background:"#1E293B", borderRadius:999, height:4, overflow:"hidden" }}>
+                <div style={{ width:`${dayProg}%`, height:"100%", background: dayProg===100 ? "#10B981" : selWC.color, borderRadius:999, transition:"width 0.3s" }} />
+              </div>
+            </div>
+
+            <div style={{ padding:"16px 18px" }}>
+              <div style={{ fontSize:8, letterSpacing:2, color:"#2D3F50", fontWeight:700, marginBottom:12 }}>DAILY NON-NEGOTIABLES</div>
+              {DAILY_CONSTANTS.map((task, i) => <CB key={i} day={selectedDay} type="c" index={i} label={task} accent={selWC.color} />)}
+
+              {weekly.length > 0 && <>
+                <div style={{ fontSize:8, letterSpacing:2, color:"#2D3F50", fontWeight:700, margin:"16px 0 12px" }}>{selWC.label} TARGETS</div>
+                {weekly.map((task, i) => <CB key={i} day={selectedDay} type="w" index={i} label={task} accent={selWC.color} />)}
+              </>}
+
+              {special.length > 0 && <>
+                <div style={{ fontSize:8, letterSpacing:2, color:selWC.color, fontWeight:700, margin:"16px 0 12px" }}>TODAY'S SPECIALS ⚡</div>
+                {special.map((task, i) => <CB key={i} day={selectedDay} type="s" index={i} label={task} accent={selWC.color} />)}
+              </>}
+
+              <div style={{ display:"flex", gap:8, marginTop:20 }}>
+                {selectedDay > 1 && (
+                  <button onClick={() => setSelectedDay(d => d-1)} style={{ flex:1, padding:"12px 0", background:"#0A0F18", border:"1px solid #1E293B", borderRadius:8, color:"#475569", fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                    ← Day {selectedDay-1}
+                  </button>
+                )}
+                {selectedDay < 31 && (
+                  <button onClick={() => setSelectedDay(d => d+1)} style={{ flex:1, padding:"12px 0", background:`${selWC.color}18`, border:`1px solid ${selWC.color}35`, borderRadius:8, color:selWC.color, fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                    Day {selectedDay+1} →
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
