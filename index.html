@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Giu Protocol">
+<title>The Giu Protocol</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { background:#060A10; color:#E2E8F0; font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif; min-height:100vh; }
+  ::-webkit-scrollbar{width:3px} ::-webkit-scrollbar-thumb{background:#1E293B;border-radius:2px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const STORAGE_KEY = "giu-protocol-v3";
+
+// Protocol Day 1 = Aug 11 2026 (Tuesday = dow 2)
+// getDow: (protocolDay + 1) % 7  →  0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
+function getDow(day) { return (day + 1) % 7; }
+
+function getActualDate(day) {
+  if (day <= 21) return { month:"Aug", date:10+day, full:`Aug ${10+day}` };
+  return { month:"Sep", date:day-21, full:`Sep ${day-21}` };
+}
+
+// School schedule by dow (FGCU every week)
+const SCHOOL = {
+  1: "🎓 FGCU — 9:00 AM to 1:00 PM",
+  2: "🎓 FGCU — 9:00 AM to 2:00 PM",
+  3: "🎓 FGCU — 9:00 AM to 10:30 AM",
+  5: "🎓 FGCU — 9:00 AM to 10:30 AM",
+};
+
+// Gym split by dow (Wed=3 and Sun=0 are rest)
+const GYM = {
+  1: "💪 Push — Chest, Shoulders, Triceps",
+  2: "💪 Pull — Back, Biceps",
+  4: "💪 Legs — Quads, Hamstrings, Glutes, Calves",
+  5: "💪 Upper — Compound Chest + Back + Shoulders",
+  6: "💪 Arms / Abs — Biceps, Triceps, Core",
+};
+
+// Golf by dow
+const GOLF = {
+  1: "⛳ Golf — Range practice",
+  2: "⛳ Golf — Range practice",
+  3: "⛳ Golf — Range practice",
+  4: "⛳ Golf — 9 holes on course",
+  5: "⛳ Golf — Range practice",
+  6: "⛳ Golf — 9 holes on course",
+  0: "⛳ Golf — 9 holes on course",
+};
+
+// Climbing: Thursday (4) and Saturday (6)
+const CLIMBING_DAYS = new Set([4, 0]);
+
+// Week config by protocol day
+const WEEK_CONFIG = [
+  { label:"WEEK 1", theme:"GET LIVE",      color:"#3B82F6", days:[1,2,3,4,5,6,7]   },
+  { label:"WEEK 2", theme:"FIRST RESULTS", color:"#8B5CF6", days:[8,9,10,11,12,13,14] },
+  { label:"WEEK 3", theme:"SCALE UP",      color:"#EF4444", days:[15,16,17,18,19,20,21] },
+  { label:"WEEK 4", theme:"CONSOLIDATE",   color:"#F59E0B", days:[22,23,24,25,26,27,28] },
+  { label:"BONUS",  theme:"OVERFLOW",      color:"#10B981", days:[29,30,31] },
+];
+
+const SECTION_META = {
+  specials:  { color:"#F97316", label:"TODAY'S MISSIONS ⚡" },
+  school:    { color:"#06B6D4", label:"SCHOOL" },
+  mind:      { color:"#8B5CF6", label:"MIND" },
+  body:      { color:"#3B82F6", label:"BODY" },
+  charisma:  { color:"#F59E0B", label:"CHARISMA & SOCIAL" },
+  business:  { color:"#10B981", label:"BUSINESS" },
+  reading:   { color:"#EC4899", label:"READING" },
+  standards: { color:"#64748B", label:"DAILY STANDARDS" },
+};
+
+// Specials mapped to protocol days (Day 1 = Aug 11)
+const SPECIALS = {
+  1:  ["🔥 DAY ONE — protocol officially starts", "📝 Weekly philosophy question — write one full page"],
+  2:  ["🔧 Fully integrate Anthony's agent into his Vapi account", "✏️ Jouer — one sketch or concept note"],
+  4:  ["🚀 Anthony campaign goes live — first real calls out", "Week 1 review — is the system running?"],
+  5:  ["📝 Weekly philosophy question — write one full page"],
+  6:  ["📅 Weekly planning — map client 2 outreach strategy", "✏️ Jouer — one sketch or concept note"],
+  7:  ["🎓 First day at FGCU — show up, establish presence", "🎯 Outreach for client 2 — contact 3 targeted businesses"],
+  8:  ["📊 Check Anthony's campaign data — meetings booked, call rates"],
+  9:  ["✏️ Jouer — one sketch or concept note", "📹 Documentary — shoot something real today"],
+  11: ["Week 2 review — what's working, what needs tuning?"],
+  12: ["📝 Weekly philosophy question — write one full page"],
+  13: ["📅 Weekly planning", "✏️ Jouer — one sketch or concept note"],
+  14: ["🎯 Close client 2 — 5 new businesses contacted this week"],
+  16: ["📊 Mid-month systems check — both clients running clean", "✏️ Jouer — one sketch or concept note"],
+  17: ["Write your 3 honest assessment answers:\n  1. Where am I vs Day 1?\n  2. What's actually working?\n  3. What am I still avoiding?"],
+  18: ["📈 Set targets for final stretch — revenue, clients, systems", "Week 3 review"],
+  19: ["📝 Weekly philosophy question — write one full page"],
+  20: ["📅 Weekly planning — final push", "✏️ Jouer — one sketch or concept note"],
+  21: ["🎯 Client 3 outreach — 5 new businesses"],
+  22: ["September — new month, same standard"],
+  24: ["📊 Full systems review — all clients", "✏️ Jouer — one sketch or concept note"],
+  26: ["📝 Weekly philosophy question — write one full page"],
+  27: ["📅 Weekly planning"],
+  28: ["📹 Documentary — major filming session"],
+  29: ["REST DAY — morning routine only", "20 min extended stillness", "Zero pressure, zero guilt"],
+  30: ["📅 Plan Month 2 protocol in full writing", "No automation work today"],
+  31: ["🔥 31 DAYS DONE — reflect, celebrate, restart harder", "📝 Final philosophy entry — what did this month teach you?"],
+};
+
+function getDayTasks(day) {
+  const dow = getDow(day);
+  const gym = GYM[dow] || null;
+  const golf = GOLF[dow] || null;
+  const hasClimbing = CLIMBING_DAYS.has(dow);
+  const isGymRest = dow === 0 || dow === 3;
+  const hasSchool = !!SCHOOL[dow] && day >= 7;
+  const isRestDay = day === 29;
+
+  if (isRestDay) {
+    return {
+      specials: SPECIALS[day] || [],
+      mind: ["Morning stillness — 20 min extended (rest day)", "Morning journal + scripting", "Gratitude — write one thing and feel it", "Pre-sleep visualization — 5 min"],
+      standards: ["Wake at 6:00 AM","Cold shower (2 min)","No phone first 45 min","Real breakfast before 8 AM","No gooning","3L water","Bed by 11 PM"],
+    };
+  }
+
+  return {
+    specials: SPECIALS[day] || [],
+    school: hasSchool ? [SCHOOL[dow]] : [],
+    mind: [
+      "Morning stillness — 5 min (no input, just sit)",
+      "Morning journal: 3 sentences + scripting (write desired reality as already true)",
+      "Gratitude — write one thing and actually feel it, don't just list it",
+      "Pre-sleep visualization — 5 min as you fall asleep",
+    ],
+    body: [
+      ...(isGymRest ? ["💤 Gym rest day"] : (gym ? [gym] : [])),
+      ...(golf ? [golf] : []),
+      ...(hasClimbing ? ["🧗 Rock climbing session"] : []),
+      "10 min evening walk — no headphones",
+    ],
+    charisma: [
+      "Mirror practice — 5 min talking out loud",
+      "Voice recording — 60 sec, listen back for pace, tone, clarity",
+      "Compliment one person genuinely — no agenda",
+      "One real phone call instead of texting",
+      "Social discomfort rep",
+      "Eye contact holds — 3 sec longer than comfortable in every interaction",
+      "Assume rapport — walk in assuming everyone already likes you",
+      "Name drop — use someone's name once naturally per interaction",
+      "Spotlight shift — make someone talk 70% in at least one conversation",
+    ],
+    business: [
+      dow === 0
+        ? "📅 Weekly planning session — map the full week ahead"
+        : "💻 AI automation work — afternoon session",
+    ],
+    reading: ["15 pages"],
+    standards: [
+      "Wake at 6:00 AM — no snooze, ever",
+      "Cold shower (2 min minimum)",
+      "No phone for first 45 minutes",
+      "Real breakfast before 8 AM",
+      "No gooning",
+      "No social media before noon",
+      "3L water minimum",
+      "10,000 steps",
+      "Evening check-in: yes/no on every commitment",
+      "In bed by 11 PM",
+    ],
+  };
+}
+
+function countTasks(tasks) {
+  return Object.values(tasks).reduce((s,a) => s + a.length, 0);
+}
+
+function getWC(day) {
+  return WEEK_CONFIG.find(w => w.days.includes(day)) || WEEK_CONFIG[0];
+}
+
+const DAY_LABELS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const DOW_NAMES  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+// Protocol starts Tuesday, so 2 blank cells (Sun, Mon) before Day 1
+const START_BLANKS = 2;
+
+function App() {
+  const [sel, setSel] = React.useState(1);
+  const [checked, setChecked] = React.useState({});
+  const [saveStatus, setSaveStatus] = React.useState("idle");
+  const [view, setView] = React.useState("day");
+  const [loaded, setLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    try { const s = localStorage.getItem(STORAGE_KEY); if (s) setChecked(JSON.parse(s)); } catch(e){}
+    setLoaded(true);
+  }, []);
+
+  const save = (data) => {
+    setSaveStatus("saving");
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); setSaveStatus("saved"); setTimeout(()=>setSaveStatus("idle"),1500); }
+    catch(e) { setSaveStatus("error"); }
+  };
+
+  const toggle = (day, sec, i) => {
+    const k = `${day}-${sec}-${i}`;
+    setChecked(p => { const n={...p,[k]:!p[k]}; save(n); return n; });
+  };
+
+  const isC = (day,sec,i) => !!checked[`${day}-${sec}-${i}`];
+
+  const getDayProg = (day) => {
+    const t = getDayTasks(day); const total = countTasks(t); if(!total) return 0;
+    let done=0;
+    Object.entries(t).forEach(([s,items])=>items.forEach((_,i)=>{ if(isC(day,s,i)) done++; }));
+    return Math.round((done/total)*100);
+  };
+
+  const {totalProg, completedDays} = React.useMemo(()=>{
+    let total=0,done=0,cd=0;
+    for(let d=1;d<=31;d++){
+      const t=getDayTasks(d); const tt=countTasks(t); total+=tt; let dd=0;
+      Object.entries(t).forEach(([s,items])=>items.forEach((_,i)=>{ if(checked[`${d}-${s}-${i}`]){done++;dd++;} }));
+      if(tt>0&&dd===tt)cd++;
+    }
+    return {totalProg:total?Math.round((done/total)*100):0,completedDays:cd};
+  },[checked]);
+
+  const selWC = getWC(sel);
+  const dayTasks = getDayTasks(sel);
+  const dayProg = getDayProg(sel);
+  const dow = getDow(sel);
+  const actualDate = getActualDate(sel);
+
+  // Build calendar cells: 2 blanks then days 1-31
+  const cells = [];
+  for(let i=0;i<START_BLANKS;i++) cells.push(null);
+  for(let d=1;d<=31;d++) cells.push(d);
+
+  const SectionBlock = ({day,secKey,items}) => {
+    if(!items||items.length===0) return null;
+    const meta = SECTION_META[secKey] || SECTION_META.standards;
+    return (
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:8,letterSpacing:2,color:meta.color,fontWeight:800,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+          <div style={{height:1,width:10,background:meta.color}}/>
+          {meta.label}
+          <div style={{height:1,flex:1,background:meta.color,opacity:0.25}}/>
+        </div>
+        {items.map((task,i)=>{
+          const done=isC(day,secKey,i);
+          return (
+            <div key={i} onClick={()=>toggle(day,secKey,i)} style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:9,cursor:"pointer",userSelect:"none"}}>
+              <div style={{width:17,height:17,borderRadius:4,flexShrink:0,marginTop:1,border:`2px solid ${done?meta.color:"#1E293B"}`,background:done?meta.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s"}}>
+                {done&&<span style={{fontSize:9,color:"#fff",fontWeight:900}}>✓</span>}
+              </div>
+              <span style={{fontSize:12.5,lineHeight:1.55,color:done?"#334155":secKey==="specials"||secKey==="school"?"#E2E8F0":"#7A9AB8",fontWeight:secKey==="specials"||secKey==="school"?600:400,textDecoration:done?"line-through":"none",whiteSpace:"pre-line"}}>
+                {task}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  if(!loaded) return <div style={{minHeight:"100vh",background:"#060A10",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"#334155",fontSize:13,letterSpacing:2}}>LOADING...</div></div>;
+
+  return (
+    <div style={{minHeight:"100vh",background:"#060A10",color:"#E2E8F0",fontFamily:"-apple-system,BlinkMacSystemFont,'Inter',sans-serif",padding:"18px 10px 40px"}}>
+      <div style={{maxWidth:480,margin:"0 auto"}}>
+
+        {/* Header */}
+        <div style={{marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div>
+            <div style={{fontSize:9,letterSpacing:4,color:"#334155",textTransform:"uppercase",marginBottom:4}}>Aug 11 – Sep 10, 2026 · 31 Days</div>
+            <div style={{fontSize:28,fontWeight:900,letterSpacing:-0.5}}>The Giu Protocol</div>
+            <div style={{fontSize:10,color:"#475569",marginTop:3,letterSpacing:1.5}}>MIND · BODY · BUSINESS · CHARISMA</div>
+          </div>
+          {saveStatus!=="idle"&&<div style={{fontSize:10,fontWeight:700,color:saveStatus==="saved"?"#10B981":saveStatus==="saving"?"#F59E0B":"#EF4444",marginTop:4}}>{saveStatus==="saved"?"✓ saved":saveStatus==="saving"?"saving...":"failed"}</div>}
+        </div>
+
+        {/* Stats */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+          {[{l:"OVERALL",v:`${totalProg}%`,c:"#3B82F6"},{l:"DAYS DONE",v:`${completedDays}/31`,c:"#10B981"}].map(s=>(
+            <div key={s.l} style={{background:"#0D1117",borderRadius:8,padding:"10px 14px"}}>
+              <div style={{fontSize:8,letterSpacing:2,color:"#334155",fontWeight:700,marginBottom:4}}>{s.l}</div>
+              <div style={{fontSize:22,fontWeight:900,color:s.c}}>{s.v}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{background:"#1E293B",borderRadius:999,height:3,marginBottom:14,overflow:"hidden"}}>
+          <div style={{height:"100%",width:`${totalProg}%`,background:"linear-gradient(90deg,#3B82F6,#8B5CF6,#EF4444,#F59E0B)",borderRadius:999,transition:"width 0.4s"}}/>
+        </div>
+
+        {/* Tabs */}
+        <div style={{display:"flex",background:"#0D1117",borderRadius:8,padding:4,marginBottom:16,gap:4}}>
+          {["calendar","day"].map(v=>(
+            <button key={v} onClick={()=>setView(v)} style={{flex:1,padding:"8px 0",borderRadius:6,border:"none",cursor:"pointer",background:view===v?selWC.color:"transparent",color:view===v?"#fff":"#475569",fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:1,transition:"all 0.15s"}}>
+              {v==="calendar"?"📅 Calendar":"✅ Today"}
+            </button>
+          ))}
+        </div>
+
+        {view==="calendar"&&(
+          <div>
+            {/* Week legend */}
+            <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>
+              {WEEK_CONFIG.map(w=>(
+                <div key={w.label} style={{display:"flex",alignItems:"center",gap:5}}>
+                  <div style={{width:7,height:7,borderRadius:2,background:w.color}}/>
+                  <span style={{fontSize:9,color:"#475569",fontWeight:700}}>{w.label}: {w.theme}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Day headers */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:4}}>
+              {DAY_LABELS.map(d=><div key={d} style={{textAlign:"center",fontSize:9,color:"#2D3F50",fontWeight:700,padding:"4px 0"}}>{d}</div>)}
+            </div>
+
+            {/* Calendar grid */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:14}}>
+              {cells.map((day,i)=>{
+                if(!day) return <div key={`e${i}`} style={{aspectRatio:"1"}}/>;
+                const wc=getWC(day); const prog=getDayProg(day);
+                const s=day===sel; const done=prog===100;
+                const ad=getActualDate(day);
+                const isDay1=day===1;
+                return (
+                  <button key={day} onClick={()=>{setSel(day);setView("day");}} style={{aspectRatio:"1",border:s?`2px solid ${wc.color}`:"2px solid transparent",borderRadius:8,background:s?`${wc.color}1A`:done?`${wc.color}10`:"#0D1117",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,transition:"all 0.12s",position:"relative",padding:2}}>
+                    {isDay1&&<div style={{position:"absolute",top:2,right:2,width:4,height:4,borderRadius:"50%",background:"#10B981"}}/>}
+                    <span style={{fontSize:10,fontWeight:s?900:700,color:s?wc.color:done?wc.color:"#64748B",lineHeight:1}}>D{day}</span>
+                    <span style={{fontSize:7,color:s?`${wc.color}99`:"#334155",lineHeight:1}}>{ad.full}</span>
+                    {prog>0&&prog<100&&<div style={{width:"65%",height:2,background:"#1E293B",borderRadius:999,marginTop:1}}><div style={{width:`${prog}%`,height:"100%",background:wc.color,borderRadius:999}}/></div>}
+                    {done&&<span style={{fontSize:7,color:"#10B981",fontWeight:900}}>✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Reference cards */}
+            {[
+              {title:"FGCU SCHEDULE",rows:[{d:"Mon",t:"9:00 AM – 1:00 PM"},{d:"Tue",t:"9:00 AM – 2:00 PM"},{d:"Wed",t:"9:00 AM – 10:30 AM"},{d:"Thu",t:"No class"},{d:"Fri",t:"9:00 AM – 10:30 AM"}]},
+              {title:"GYM SPLIT",rows:[{d:"Mon",t:"Push — Chest/Shoulders/Tris"},{d:"Tue",t:"Pull — Back/Biceps"},{d:"Wed",t:"REST"},{d:"Thu",t:"Legs — Quads/Hams/Glutes"},{d:"Fri",t:"Upper — Compound Full Upper"},{d:"Sat",t:"Arms/Abs — Bis/Tris/Core"},{d:"Sun",t:"REST"}]},
+              {title:"⛳ GOLF",rows:[{d:"Mon-Fri",t:"Range practice (weekdays)"},{d:"Thu",t:"9 holes"},{d:"Sat",t:"9 holes"},{d:"Sun",t:"9 holes"}]},
+              {title:"🧗 CLIMBING",rows:[{d:"Thu",t:"Session 1"},{d:"Sun",t:"Session 2"}]},
+            ].map(card=>(
+              <div key={card.title} style={{background:"#0D1117",borderRadius:10,padding:"14px 16px",marginBottom:10}}>
+                <div style={{fontSize:8,letterSpacing:2,color:"#334155",fontWeight:700,marginBottom:10}}>{card.title}</div>
+                {card.rows.map(r=>(
+                  <div key={r.d} style={{display:"flex",gap:10,marginBottom:6}}>
+                    <span style={{fontSize:10,fontWeight:700,color:"#334155",minWidth:50}}>{r.d}</span>
+                    <span style={{fontSize:10,color:"#475569"}}>{r.t}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {view==="day"&&(
+          <div style={{background:"#0D1117",borderRadius:12,overflow:"hidden"}}>
+            {/* Day header */}
+            <div style={{padding:"14px 18px",background:`${selWC.color}12`,borderBottom:`1px solid ${selWC.color}22`}}>
+              <div style={{fontSize:8,letterSpacing:3,color:selWC.color,fontWeight:800,marginBottom:2}}>{selWC.label} · {selWC.theme}</div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+                <div>
+                  <div style={{fontSize:22,fontWeight:900,letterSpacing:-0.5}}>Day {sel} <span style={{fontSize:14,fontWeight:600,color:"#475569"}}>· {actualDate.full}</span></div>
+                  <div style={{fontSize:10,color:"#475569",marginTop:2}}>{DOW_NAMES[dow]}</div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:26,fontWeight:900,color:dayProg===100?"#10B981":selWC.color}}>{dayProg}%</div>
+                  <div style={{fontSize:9,color:"#334155"}}>complete</div>
+                </div>
+              </div>
+              <div style={{marginTop:10,background:"#1E293B",borderRadius:999,height:3,overflow:"hidden"}}>
+                <div style={{width:`${dayProg}%`,height:"100%",background:dayProg===100?"#10B981":selWC.color,borderRadius:999,transition:"width 0.3s"}}/>
+              </div>
+            </div>
+
+            <div style={{padding:"16px 18px"}}>
+              {["specials","school","mind","body","charisma","business","reading","standards"].map(secKey=>(
+                <SectionBlock key={secKey} day={sel} secKey={secKey} items={dayTasks[secKey]||[]}/>
+              ))}
+
+              <div style={{display:"flex",gap:8,marginTop:16}}>
+                {sel>1&&<button onClick={()=>setSel(d=>d-1)} style={{flex:1,padding:"10px 0",background:"#0A0F18",border:"1px solid #1E293B",borderRadius:8,color:"#475569",fontSize:12,fontWeight:700,cursor:"pointer"}}>← Day {sel-1}</button>}
+                {sel<31&&<button onClick={()=>setSel(d=>d+1)} style={{flex:1,padding:"10px 0",background:`${selWC.color}18`,border:`1px solid ${selWC.color}35`,borderRadius:8,color:selWC.color,fontSize:12,fontWeight:700,cursor:"pointer"}}>Day {sel+1} →</button>}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
